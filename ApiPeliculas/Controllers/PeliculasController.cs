@@ -26,13 +26,13 @@ namespace ApiPeliculas.Controllers
         {
             var listaPeliculas = _pelRepo.GetPeliculas();
 
-            var listaCateogriaDto = new List<PeliculaDto>();
+            var listaPeliculasDto = new List<PeliculaDto>();
 
             foreach (var lista in listaPeliculas)
             {
-                listaCateogriaDto.Add(_mapper.Map<PeliculaDto>(lista));
+                listaPeliculasDto.Add(_mapper.Map<PeliculaDto>(lista));
             }
-            return Ok(listaPeliculas);
+            return Ok(listaPeliculasDto);
         }
 
         [HttpGet("id:int", Name = "GetPelicula")]

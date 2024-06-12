@@ -42,13 +42,13 @@ namespace ApiPeliculas.Controllers
         }
 
         [Authorize(Roles = "admin")]
-        [HttpGet("id:int", Name = "GetUsuario")]
+        [HttpGet("{id}", Name = "GetUsuario")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult GetUsuario(int id)
+        public IActionResult GetUsuario(string id)
         {
             var Usuario = _usrRepo.GetUsuario(id);
 
@@ -59,6 +59,7 @@ namespace ApiPeliculas.Controllers
 
             return Ok(dto);
         }
+
         [AllowAnonymous]
         [HttpPost("registro")]
         [ProducesResponseType(201, Type = typeof(UsuarioDto))]
@@ -67,7 +68,7 @@ namespace ApiPeliculas.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Registro([FromBody] UsuarioRegistroDto registro)
         {
-            if (_usrRepo.IsUniqueUser(registro.NombreUsuario))
+            if (!_usrRepo.IsUniqueUser(registro.NombreUsuario))
             {
                 _respuestaApi.StatusCode = HttpStatusCode.BadRequest;
                 _respuestaApi.IsSuccess = false;
@@ -95,9 +96,9 @@ namespace ApiPeliculas.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult Login([FromBody] UsuarioLoginDto login)
+        public async Task<IActionResult> Login([FromBody] UsuarioLoginDto login)
         {
-            var respuestaLogin = _usrRepo.Login(login);
+            var respuestaLogin = await _usrRepo.Login(login);
 
             if (respuestaLogin == null || string.IsNullOrEmpty(respuestaLogin.Token))
             {

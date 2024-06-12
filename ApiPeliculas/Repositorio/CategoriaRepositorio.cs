@@ -7,8 +7,8 @@ namespace ApiPeliculas.Repositorio
 {
     public class CategoriaRepositorio : ICategoriaRepositorio
     {
-        private readonly AplicationDbContext _context;
-        public CategoriaRepositorio(AplicationDbContext context)
+        private readonly ApplicationDbContext _context;
+        public CategoriaRepositorio(ApplicationDbContext context)
         {
             _context = context;
         }

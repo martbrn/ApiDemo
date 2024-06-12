@@ -17,7 +17,7 @@ public class Pelicula
     [Key]
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
-    public string RutaImagen { get; set; } = string.Empty;
+    public byte[] RutaImagen { get; set; }
     public string Descripcion { get; set; } = string.Empty;
     public int Duracion { get; set; }
     public TipoClasificacion Clasificacion { get; set; }

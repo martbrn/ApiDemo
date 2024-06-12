@@ -2,116 +2,160 @@
 using ApiPeliculas.Modelos;
 using ApiPeliculas.Modelos.DTOs;
 using ApiPeliculas.Repositorio.IRepositorio;
+using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using XSystem.Security.Cryptography;
 
-namespace ApiPeliculas.Repositorio;
-
-public class UsuarioRepositorio : IUsuarioRepositorio
+namespace ApiPeliculas.Repositorio
 {
-    private readonly AplicationDbContext _context;
-    private string claveSecreta;
-    public UsuarioRepositorio(AplicationDbContext context, IConfiguration config)
+    public class UsuarioRepositorio : IUsuarioRepositorio
     {
-        _context = context;
-#pragma warning disable CS8601 // Posible asignación de referencia nula
-        claveSecreta = config.GetValue<string>("ApiSettings:Secreta");
-#pragma warning restore CS8601 // Posible asignación de referencia nula
-    }
+        private readonly ApplicationDbContext _bd;
+        private string claveSecreta;
+        private readonly UserManager<AppUsuario> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IMapper _mapper;
 
-    public Usuario? GetUsuario(int id)
-    {
-        return _context.Usuarios.FirstOrDefault(x => x.Id == id);
-    }
 
-    public ICollection<Usuario> GetUsuarios()
-    {
-        return _context.Usuarios
-            .OrderBy(x => x.NombreUsuario)
-            .ToList();
-    }
-
-    public bool IsUniqueUser(string usuario)
-    {
-        var existe = _context.Usuarios.Any(x => x.Nombre == usuario.Trim());
-        return existe;
-    }
-
-    public async Task<Usuario> Registro(UsuarioRegistroDto dto)
-    {
-        var passwordEncriptado = obtenermd5(dto.Password);
-
-        Usuario newUsuario = new Usuario()
+        public UsuarioRepositorio(ApplicationDbContext bd, IConfiguration config,
+            UserManager<AppUsuario> userManager, RoleManager<IdentityRole> roleManager,
+            IMapper mapper)
         {
-            Nombre = dto.Nombre,
-            Password = passwordEncriptado,
-            NombreUsuario = dto.NombreUsuario,
-            Rol = dto.Rol,
-        };
-        _context.Usuarios.Add(newUsuario);
-        await _context.SaveChangesAsync();
-        return newUsuario;
-    }
-
-    public UsuarioLoginRespuestaDto Login(UsuarioLoginDto dto)
-    {
-        var passwordEncriptado = obtenermd5(dto.Password);
-
-        var usuario = _context.Usuarios.FirstOrDefault(
-             x =>
-             x.NombreUsuario.ToLower() == dto.NombreUsuario.ToLower()
-             && x.Password == passwordEncriptado
-            );
-
-        // No encontro el usuario
-        if (usuario == null)
-        {
-            return new UsuarioLoginRespuestaDto()
-            {
-                Token = "",
-                Usuario = null
-            };
+            _bd = bd;
+            claveSecreta = config.GetValue<string>("ApiSettings:Secreta");
+            _roleManager = roleManager;
+            _userManager = userManager;
+            _roleManager = roleManager;
+            _mapper = mapper;
         }
 
-        // Encontro el usuario
-        var manejadorToken = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(claveSecreta);
 
-        var tokenDescriptor = new SecurityTokenDescriptor
+        public AppUsuario GetUsuario(string usuarioId)
         {
-            Subject = new ClaimsIdentity(new Claim[]
+            return _bd.AppUsuarios.FirstOrDefault(u => u.Id == usuarioId);
+        }
+
+        public ICollection<AppUsuario> GetUsuarios()
+        {
+            return _bd.AppUsuarios.OrderBy(u => u.UserName).ToList();
+        }
+
+        public bool IsUniqueUser(string usuario)
+        {
+            var usuariobd = _bd.AppUsuarios.FirstOrDefault(u => u.UserName == usuario);
+            if (usuariobd == null)
             {
-                new Claim(ClaimTypes.Name, usuario.NombreUsuario),
-                new Claim(ClaimTypes.Role, usuario.Rol)
-            }),
-            Expires = DateTime.Now.AddDays(7),
-            SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
+                return true;
+            }
 
-        var token = manejadorToken.CreateToken(tokenDescriptor);
+            return false;
+        }
 
-        var respuesta = new UsuarioLoginRespuestaDto()
+        public async Task<UsuarioDatosDto> Registro(UsuarioRegistroDto usuarioRegistroDto)
         {
-            Token = manejadorToken.WriteToken(token),
-            Usuario = usuario
-        };
+            //var passwordEncriptado = obtenermd5(usuarioRegistroDto.Password);
 
-        return respuesta;
+            AppUsuario usuario = new AppUsuario()
+            {
+                UserName = usuarioRegistroDto.NombreUsuario,
+                Email = usuarioRegistroDto.NombreUsuario,
+                NormalizedEmail = usuarioRegistroDto.NombreUsuario.ToUpper(),
+                Nombre = usuarioRegistroDto.Nombre
+            };
 
-    }
+            var result = await _userManager.CreateAsync(usuario, usuarioRegistroDto.Password);
+            if (result.Succeeded)
+            {
+                //Solo la primera vez y es para crear los roles
+                if (!_roleManager.RoleExistsAsync("admin").GetAwaiter().GetResult())
+                {
+                    await _roleManager.CreateAsync(new IdentityRole("admin"));
+                    await _roleManager.CreateAsync(new IdentityRole("registrado"));
+                }
 
-    //Método para encriptar contraseña con MD5 se usa tanto en el Acceso como en el Registro
-    public static string obtenermd5(string valor)
-    {
-        MD5CryptoServiceProvider x = new MD5CryptoServiceProvider();
-        byte[] data = System.Text.Encoding.UTF8.GetBytes(valor);
-        data = x.ComputeHash(data);
-        string resp = "";
-        for (int i = 0; i < data.Length; i++)
-            resp += data[i].ToString("x2").ToLower();
-        return resp;
+                await _userManager.AddToRoleAsync(usuario, "registrado");
+                var usuarioRetornado = _bd.AppUsuarios.FirstOrDefault(u => u.UserName == usuarioRegistroDto.NombreUsuario);
+                //Opcion 1
+                //return new UsuarioDatosDto()
+                //{
+                //    Id = usuarioRetornado.Id,
+                //    UserName = usuarioRetornado.UserName,
+                //    Nombre = usuarioRetornado.Nombre
+                //};
+                return _mapper.Map<UsuarioDatosDto>(usuarioRetornado);
+            }
+
+            //_bd.Usuario.Add(usuario);
+            //await _bd.SaveChangesAsync();
+            //usuario.Password = passwordEncriptado;
+            //return usuario;
+            return new UsuarioDatosDto();
+
+        }
+
+        public async Task<UsuarioLoginRespuestaDto> Login(UsuarioLoginDto usuarioLoginDto)
+        {
+            //var passwordEncriptado = obtenermd5(usuarioLoginDto.Password);
+
+            var usuario = _bd.AppUsuarios.FirstOrDefault(
+                u => u.UserName.ToLower() == usuarioLoginDto.NombreUsuario.ToLower());
+
+            bool isValida = await _userManager.CheckPasswordAsync(usuario, usuarioLoginDto.Password);
+
+            //Validamos si el usuario no existe con la combinación de usuario y contraseña correcta
+            if (usuario == null || isValida == false)
+            {
+                return new UsuarioLoginRespuestaDto()
+                {
+                    Token = "",
+                    Usuario = null
+                };
+            }
+
+            //Aquí existe el usuario entonces podemos procesar el login
+            var roles = await _userManager.GetRolesAsync(usuario);
+
+            var manejadorToken = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(claveSecreta);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Name, usuario.UserName.ToString()),
+                    new Claim(ClaimTypes.Role, roles.FirstOrDefault())
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = manejadorToken.CreateToken(tokenDescriptor);
+
+            UsuarioLoginRespuestaDto usuarioLoginRespuestaDto = new UsuarioLoginRespuestaDto()
+            {
+                Token = manejadorToken.WriteToken(token),
+                Usuario = _mapper.Map<UsuarioDatosDto>(usuario)
+            };
+
+            return usuarioLoginRespuestaDto;
+        }
+
+
+        //Método para encriptar contraseña con MD5 se usa tanto en el Acceso como en el Registro
+        //public static string obtenermd5(string valor)
+        //{
+        //    MD5CryptoServiceProvider x = new MD5CryptoServiceProvider();
+        //    byte[] data = System.Text.Encoding.UTF8.GetBytes(valor);
+        //    data = x.ComputeHash(data);
+        //    string resp = "";
+        //    for (int i = 0; i < data.Length; i++)
+        //        resp += data[i].ToString("x2").ToLower();
+        //    return resp;
+        //}
+
     }
 }

@@ -11,7 +11,7 @@ public class PeliculaDto
     [Required(ErrorMessage = "El nombre es obligatorio")]
     [MaxLength(60, ErrorMessage = "El número máximo de caracteres es de 100!")]
     public string Nombre { get; set; } = "";
-    public string RutaImagen { get; set; } = string.Empty;
+    public byte[] RutaImagen { get; set; }
     [Required(ErrorMessage = "La descripción es obligatoria")]
     public string Descripcion { get; set; } = string.Empty;
     [Required(ErrorMessage = "La duración es obligatoria")]

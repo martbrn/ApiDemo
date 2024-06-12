@@ -1,8 +1,10 @@
 using ApiPeliculas.Data;
+using ApiPeliculas.Modelos;
 using ApiPeliculas.PeliculasMapper;
 using ApiPeliculas.Repositorio;
 using ApiPeliculas.Repositorio.IRepositorio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,10 +14,13 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 //Configuramos la conexion a SQL Server
-builder.Services.AddDbContext<AplicationDbContext>(opciones =>
+builder.Services.AddDbContext<ApplicationDbContext>(opciones =>
 {
     opciones.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSql"));
 });
+
+//Soporte para autenticacion con .NET Identity
+builder.Services.AddIdentity<AppUsuario,IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 
 //Añadimos cache
 builder.Services.AddResponseCaching();
@@ -34,6 +39,7 @@ var key = builder.Configuration.GetValue<string>("ApiSettings:Secreta");
 builder.Services.AddAuthentication(x =>
     {
         x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     }
 ).AddJwtBearer(x =>
@@ -105,6 +111,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 
 //Soporte para CORS
 app.UseCors("PolicyCors");

@@ -4,7 +4,7 @@ namespace ApiPeliculas.Modelos.DTOs;
 
 public class UsuarioLoginRespuestaDto
 {
-    public Usuario? Usuario { get; set; }
+    public UsuarioDatosDto? Usuario { get; set; }
     public required string Token { get; set; }
 
 }

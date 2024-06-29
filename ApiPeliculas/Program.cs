@@ -3,6 +3,7 @@ using ApiPeliculas.Modelos;
 using ApiPeliculas.PeliculasMapper;
 using ApiPeliculas.Repositorio;
 using ApiPeliculas.Repositorio.IRepositorio;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +21,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(opciones =>
 });
 
 //Soporte para autenticacion con .NET Identity
-builder.Services.AddIdentity<AppUsuario,IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<AppUsuario, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 
 //Añadimos cache
 builder.Services.AddResponseCaching();
@@ -34,6 +35,24 @@ builder.Services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
 builder.Services.AddAutoMapper(typeof(PeliculasMapper));
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secreta");
+
+//Soporte para versionamiento
+
+var apiVersioningBuilder = builder.Services.AddApiVersioning(opcion =>
+{
+    opcion.AssumeDefaultVersionWhenUnspecified = false;
+    opcion.DefaultApiVersion = new ApiVersion(1, 0);
+    opcion.ReportApiVersions = true;
+    //opcion.ApiVersionReader = ApiVersionReader.Combine(new QueryStringApiVersionReader("api-version"));
+});
+
+apiVersioningBuilder.AddApiExplorer(
+    opciones =>
+    {
+        opciones.GroupNameFormat = "'v'VVV";
+        opciones.SubstituteApiVersionInUrl = true;
+    }
+    );
 
 // Aqui se configura la Autenticacion
 builder.Services.AddAuthentication(x =>
@@ -92,6 +111,42 @@ builder.Services.AddSwaggerGen(options =>
             new List<string>()
         }
     });
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Version = "v1.0",
+        Title = "Peliculas Api V1",
+        Description = "Api de Peliculas Versión 1",
+        TermsOfService = new Uri("https://render2web.com/promociones"),
+        Contact = new OpenApiContact
+        {
+            Name = "render2web",
+            Url = new Uri("https://render2web.com/promociones")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "Licencia Personal",
+            Url = new Uri("https://render2web.com/promociones")
+        }
+    }
+    );
+    options.SwaggerDoc("v2", new OpenApiInfo
+    {
+        Version = "v2.0",
+        Title = "Peliculas Api V2",
+        Description = "Api de Peliculas Versión 2",
+        TermsOfService = new Uri("https://render2web.com/promociones"),
+        Contact = new OpenApiContact
+        {
+            Name = "render2web",
+            Url = new Uri("https://render2web.com/promociones")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "Licencia Personal",
+            Url = new Uri("https://render2web.com/promociones")
+        }
+    }
+    );
 });
 
 //Soporte para CORS
@@ -107,7 +162,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(opciones =>
+    {
+        opciones.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiPeliculasV1");
+        opciones.SwaggerEndpoint("/swagger/v2/swagger.json", "ApiPeliculasV2");
+    });
 }
 
 app.UseHttpsRedirection();

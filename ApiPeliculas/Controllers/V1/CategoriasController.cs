@@ -1,14 +1,17 @@
 ﻿using ApiPeliculas.Modelos;
 using ApiPeliculas.Modelos.DTOs;
 using ApiPeliculas.Repositorio.IRepositorio;
+using Asp.Versioning;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ApiPeliculas.Controllers
+namespace ApiPeliculas.Controllers.V1
 {
     [ApiController]
-    [Route("api/categorias")]
+    [Route("api/v{version:apiVersion}/categorias")]
+    [ApiVersion("1.0")]
+    //[Obsolete("Este controlador esta obsoleto")]
     public class CategoriasController : ControllerBase
     {
         private readonly ICategoriaRepositorio _ctRepo;
@@ -47,6 +50,7 @@ namespace ApiPeliculas.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Obsolete("Este controlador esta obsoleto")]
         public IActionResult GetCategoria(int id)
         {
             var categoria = _ctRepo.GetCategoria(id);

@@ -4,10 +4,12 @@ using ApiPeliculas.Repositorio.IRepositorio;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Asp.Versioning;
 
-namespace ApiPeliculas.Controllers
+namespace ApiPeliculas.Controllers.V1
 {
-    [Route("api/peliculas")]
+    [Route("api/v{version:apiVersion}/peliculas")]
+    [ApiVersion("1.0")]
     [ApiController]
     public class PeliculasController : ControllerBase
     {

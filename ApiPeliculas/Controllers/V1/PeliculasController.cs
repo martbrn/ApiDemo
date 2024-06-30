@@ -57,14 +57,14 @@ namespace ApiPeliculas.Controllers.V1
             return Ok(dto);
         }
 
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")]
         [HttpPost]
         [ProducesResponseType(201, Type = typeof(PeliculaDto))]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult CreatePelicula([FromBody] PeliculaDto dto)
+        public IActionResult CreatePelicula([FromForm] PeliculaDto dto)
         {
             if (!ModelState.IsValid || dto == null)
                 return BadRequest(ModelState);
@@ -77,12 +77,37 @@ namespace ApiPeliculas.Controllers.V1
 
             var newPelicula = _mapper.Map<Pelicula>(dto);
 
-            if (!_pelRepo.CrearPelicula(newPelicula))
-            {
-                ModelState.AddModelError("", $"Algo salio mal guardando el registro {newPelicula.Nombre}");
-                return StatusCode(500, ModelState);
-            }
+            //if (!_pelRepo.CrearPelicula(newPelicula))
+            //{
+            //    ModelState.AddModelError("", $"Algo salio mal guardando el registro {newPelicula.Nombre}");
+            //    return StatusCode(500, ModelState);
+            //}
 
+            if (dto.Imagen != null)
+            {
+                string nombreArchivo = newPelicula.Id + System.Guid.NewGuid().ToString() + Path.GetExtension(dto.Imagen.FileName);
+                string rutaArchivo = @"wwwroot\ImagenesPeliculas\" + nombreArchivo;
+
+                var ubicacionDirectorio = Path.Combine(Directory.GetCurrentDirectory(), rutaArchivo);
+
+                FileInfo file = new FileInfo(nombreArchivo);
+                if (file.Exists)
+                    file.Delete();
+
+                using (var fileStream = new FileStream(ubicacionDirectorio, FileMode.Create))
+                {
+                    dto.Imagen.CopyTo(fileStream);
+                }
+
+                var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
+                newPelicula.RutaImagen = baseUrl + "/ImagenesPeliculas/" + nombreArchivo;
+                newPelicula.RutaLocalImagen = rutaArchivo;
+
+            }
+            else
+                newPelicula.RutaImagen = "https://placehold.co/600x400";
+
+            _pelRepo.CrearPelicula(newPelicula);
             return CreatedAtRoute("GetPelicula", new { id = newPelicula.Id }, newPelicula);
         }
 
@@ -93,20 +118,45 @@ namespace ApiPeliculas.Controllers.V1
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult ActualizarPelicula(int id, [FromBody] PeliculaDto dto)
+        public IActionResult ActualizarPelicula(int id, [FromForm] ActualizaPeliculaDto dto)
         {
             if (!ModelState.IsValid || dto == null || id != dto.Id)
                 return BadRequest(ModelState);
 
-            var Pelicula = _mapper.Map<Pelicula>(dto);
+            var pelicula = _mapper.Map<Pelicula>(dto);
 
-            if (!_pelRepo.ActualizarPelicula(Pelicula))
+            //if (!_pelRepo.ActualizarPelicula(Pelicula))
+            //{
+            //    ModelState.AddModelError("", $"Algo salio mal actualizando el registro {Pelicula.Nombre}");
+            //    return StatusCode(500, ModelState);
+            //}
+
+            if (dto.Imagen != null)
             {
-                ModelState.AddModelError("", $"Algo salio mal actualizando el registro {Pelicula.Nombre}");
-                return StatusCode(500, ModelState);
-            }
+                string nombreArchivo = pelicula.Id + System.Guid.NewGuid().ToString() + Path.GetExtension(dto.Imagen.FileName);
+                string rutaArchivo = @"wwwroot\ImagenesPeliculas\" + nombreArchivo;
 
-            return CreatedAtRoute("GetPelicula", new { id = Pelicula.Id }, Pelicula);
+                var ubicacionDirectorio = Path.Combine(Directory.GetCurrentDirectory(), rutaArchivo);
+
+                FileInfo file = new FileInfo(nombreArchivo);
+                if (file.Exists)
+                    file.Delete();
+
+                using (var fileStream = new FileStream(ubicacionDirectorio, FileMode.Create))
+                {
+                    dto.Imagen.CopyTo(fileStream);
+                }
+
+                var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
+                pelicula.RutaImagen = baseUrl + "/ImagenesPeliculas/" + nombreArchivo;
+                pelicula.RutaLocalImagen = rutaArchivo;
+
+            }
+            else
+                pelicula.RutaImagen = "https://placehold.co/600x400";
+
+            _pelRepo.ActualizarPelicula(pelicula);
+            return CreatedAtRoute("GetPelicula", new { id = pelicula.Id }, pelicula);
         }
 
         [Authorize(Roles = "admin")]

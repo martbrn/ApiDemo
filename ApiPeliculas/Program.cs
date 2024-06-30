@@ -169,6 +169,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Soporte para archivos estaticos como imagenes
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 
 
